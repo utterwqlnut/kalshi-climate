@@ -1,5 +1,5 @@
 # Kalshi Climate
-> This project aims to provide a tool to forecast highest temperature trades on kalshi
+> This project aims to provide a tool to forecast highest temperature trades on kalshi and inform decisions
 
 ## Features
 
@@ -11,7 +11,7 @@
 - Tune the upper limit of entropy for distributions you wish to trade on
 - Test on historical forecasts and highs to get odds of your model
 
-###
+### Streamlit
 - Built on streamlit this is meant to be any easy to use tool to make profit on kalshi climate markets
 To use run:
 ```
