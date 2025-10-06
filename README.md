@@ -5,9 +5,10 @@
 
 ### Forecaster
 - Uses the OpenMeteo api, to provide ensemble climate predictions with multiple models
-- Provides probability distribution for max temps along with statistics to aid decisions
+- Fits a probability distribution with Gaussian KDE and users
+- Using probability distribution users can find probabilities of kalshi ranges and also statistics about the distribution
 
-### Back Testing
+### Back Testing (Currently having issues as the historical forecasts have lead times <1day)
 - Tune the upper limit of entropy for distributions you wish to trade on
 - Test on historical forecasts and highs to get odds of your model
 
