@@ -8,25 +8,27 @@ import requests_cache
 from retry_requests import retry
 import numpy as np
 import random
+import streamlit as st
 
 class OpenMeteoAPI:
     def __init__(self):
         self.loco_coord_dict = {
-            "Nyc": ('40.76680', '-73.98290'),
-            "Miami": ('25.7923', '-80.2823'),
-            "Chicago": ('41.7850', '-87.7515'),
-            "Denver": ('39.86167', '-104.67306'),
-            "Austin": ('30.19444', '-97.67000'),
-            "Houston": ('29.64600', '-95.27700'),
-            "Philadelphia": ('39.87208', '-75.24066')
+            "NYC": ('40.77898', '-73.96925'),
+            "Miami": ('25.78805', '-80.31694'),
+            "Chicago": ('41.73727', '-87.77734'),
+            "Denver": ('39.84657', '-104.65623'),
+            "Austin": ('30.18311', '-97.67989'),
+            "Los Angeles": ('33.93816', '-118.3866'),
+            "Philadelphia": ('39.87326', '-75.22681')
         }
 
         cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
         retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
         self.openmeteo = openmeteo_requests.Client(session = retry_session)
 
-    def pull_forecast(self, forecast, location):
-        coordinates = self.loco_coord_dict[location]
+    @st.cache_data
+    def pull_forecast(_self, forecast, location):
+        coordinates = _self.loco_coord_dict[location]
 
         url = "https://ensemble-api.open-meteo.com/v1/ensemble"
 
@@ -39,7 +41,7 @@ class OpenMeteoAPI:
             "forecast_days": 3,
         }
 
-        responses = self.openmeteo.weather_api(url, params=params)
+        responses = _self.openmeteo.weather_api(url, params=params)
         min_len = 1e9
 
         for response in responses:
@@ -66,14 +68,13 @@ class OpenMeteoAPI:
         else:
             return data[:,1]
         
-
-
-    def pull_backtest(self, forecast, location):
+    @st.cache_data
+    def pull_backtest(_self, forecast, location):
         if forecast != "Tomorrow":
-            raise Exception("Only Backtest on 1 tomorrow trades")
+            raise Exception("Only Backtest on tomorrow trades")
         
         # First pull the max history
-        coordinates = self.loco_coord_dict[location]
+        coordinates = _self.loco_coord_dict[location]
 
         url = "https://ensemble-api.open-meteo.com/v1/ensemble"
 
@@ -83,11 +84,11 @@ class OpenMeteoAPI:
             "daily": "temperature_2m_max",
             "timezone": "auto",
             "models": ["icon_seamless", "icon_global", "gfs025", "gfs_seamless", "ecmwf_aifs025", "ecmwf_ifs025", "gem_global","gfs05"],
-            "forecast_days": 3,
+            "forecast_days": 7,
             "past_days": 92,
         }
 
-        responses = self.openmeteo.weather_api(url, params=params)
+        responses = _self.openmeteo.weather_api(url, params=params)
 
         min_len = 1e9
         for response in responses:
@@ -95,9 +96,10 @@ class OpenMeteoAPI:
             min_len = min(len(list(map(lambda i: daily.Variables(i), range(0, daily.VariablesLength())))),min_len) 
 
         # Process daily data. The order of variables needs to be the same as requested.
+        daily_variables = []
         for response in responses:
             daily = response.Daily()
-            daily_variables = random.sample(list(map(lambda i: daily.Variables(i), range(0, daily.VariablesLength()))),min_len)
+            daily_variables += random.sample(list(map(lambda i: daily.Variables(i), range(0, daily.VariablesLength()))),min_len)
 
         daily_temperature_2m_max = filter(lambda x: x.Variable() == Variable.temperature and x.Altitude() == 2, daily_variables)	
 
@@ -127,7 +129,7 @@ class OpenMeteoAPI:
             "daily": "temperature_2m_max",
             "timezone": "auto",
         }
-        responses = self.openmeteo.weather_api(url, params=params)
+        responses = _self.openmeteo.weather_api(url, params=params)
 
         # Process first location. Add a for-loop for multiple locations or weather models
 

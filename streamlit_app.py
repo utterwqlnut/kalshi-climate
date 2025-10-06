@@ -1,16 +1,20 @@
 import streamlit as st
 import plotly.figure_factory as ff
+import numpy as np
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 
 def get_top_of_page():
     st.markdown("# Kalshi Climate Prediction ☁️")
 
     backtest = st.checkbox('**Backtest**')
 
-    col1,col2,col3,col4 = st.columns(4)
+    col1,col2,col3,col4,col5 = st.columns(5)
 
     location = col1.selectbox(
         'What location?',
-        ['Nyc', 'Miami', 'Chicago', 'Denver', 'Austin', 'Houston', 'Philadelphia']
+        ['NYC', 'Miami', 'Chicago', 'Denver', 'Austin', 'Los Angeles', 'Philadelphia']
     )
 
     forecast = col2.selectbox(
@@ -24,30 +28,57 @@ def get_top_of_page():
         100,
         95,
     )
-    entrop_req = col4.slider(
-        'Required Entropy',
+
+    kde_factor = col4.slider(
+        'KDE Scott Bandwidth Factor',
         0.0,
-        6.0,
-        3.0,
+        2.0,
+        1.0,
+    )
+
+    min_prob = col5.slider(
+        'Minimum probability',
+        0.0,
+        100.0,
+        50.0
     )
     
-    return backtest, location, forecast, cl, entrop_req
+    return backtest, location, forecast, cl, kde_factor, min_prob/100
     
-def render_non_backtest(confidence_interval, forecasts, mean, std, cl, entrop_req, entropy):
-    fig = ff.create_distplot(
-        [forecasts], ["Ensemble Forecasts"], bin_size=[0.1], show_curve=True, show_hist=True,show_rug=True
-    )
+def render_non_backtest(kde, forecasts, mean, std, ci, entropy, min_prob):
+    grid = np.linspace(min(forecasts),max(forecasts),int((max(forecasts)-min(forecasts))/0.01)) # dx is 0.01
+    pdf = kde(grid)
+
+    fig1 = px.histogram(forecasts,histnorm='probability density',range_x=[min(forecasts),max(forecasts)],opacity=0.5)
+    fig2 = px.line(y=pdf,x=grid)
+    
+    fig = go.Figure(data = fig1.data+fig2.data)
+
     st.plotly_chart(fig)
-    # Perform Rounding done by NWS
-    st.markdown(f"> Confidence Interval at **{cl}%**: [{confidence_interval[0]:.2f},{confidence_interval[1]:.2f}]")
+
+    # Add a streamlit input field for range
+    smol = round(min(forecasts))
+    big = round(max(forecasts))
+    initial_min = smol if smol % 2 == 1 else smol-1
+    kr_range = st.selectbox("Enter kalshi range",
+                 [str(i)+"-"+str(i+1) for i in range(initial_min, big, 2)]
+                )
+    
+    rangeL = float(kr_range.split('-')[0])-0.5
+    rangeR = float(kr_range.split('-')[1])+0.5
+    new_grid = np.linspace(rangeL,rangeR,int((rangeR-rangeL)/0.01))
+
+    # dx = 0.01
+    cdf = np.trapezoid(kde(new_grid),x=new_grid)
+
+    st.markdown(f"> Confidence Interval: [{ci[0]:.2f}, {ci[1]:.2f}]")
     st.markdown(f"> Mean and Std Forecast: {mean:.2f}, {std:.2f}")
     st.markdown(f"> Entropy: {entropy:.2f}")
-    
-    if  entropy < entrop_req:
-        st.markdown(f"#### Entropy Requirment Met, Trade ✅")
-        st.markdown(f"#### Trade: {round(mean)}°")
+
+    if cdf > min_prob:
+        st.markdown(f"### Trade Yes: Predicted Cumalitive Probability: {cdf:.2f}")
     else:
-        st.markdown(f"#### Entropy Requirment Not Met, Trade ❌")
+        st.markdown(f"### Trade No: Predicted Cumalitive Probability: {cdf:.2f}")
 
 def render_backtest(num_sucess,num_fail):
     odds = num_sucess/(num_sucess+num_fail)

@@ -3,39 +3,45 @@ from api import OpenMeteoAPI
 import numpy as np
 from scipy import stats
 from backtest import back_test
+from scipy.stats import gaussian_kde
 
-def interp_forecasts(forecasts,cl):
+def interp_forecasts(forecasts,cl,kde_factor):
     mean = forecasts.mean()
     std = forecasts.std(ddof=1)
 
+    kde = gaussian_kde(forecasts,bw_method=kde_factor)
+
     confidence_interval = stats.t.interval(cl,
-                                        df=len(forecasts)-1,
-                                        loc=mean,
-                                        scale=std/np.sqrt(len(forecasts))
-                                        )
+                                    df=len(forecasts)-1,
+                                    loc=mean,
+                                    scale=std
+                                    )
+                                    
+     
     # Bins based on bin width
     num_bins = int(np.ceil((max(forecasts) - min(forecasts))/(0.05)))
     pdf,bins = np.histogram(forecasts,bins=num_bins)
     entropy = stats.entropy(pdf+1e-9)
 
-    return confidence_interval, forecasts.mean(), forecasts.std(ddof=1), entropy
+    return kde, forecasts.mean(), forecasts.std(ddof=1), confidence_interval, entropy
+
 
 def main():
     # Get inputs
     api = OpenMeteoAPI()
-    backtest, location, forecast, cl, entrop_req = streamlit_app.get_top_of_page()
+    backtest, location, forecast, cl, kde_factor, min_prob = streamlit_app.get_top_of_page()
 
     if backtest:
         try:
             back_df = api.pull_backtest(forecast,location)
-            num_success, num_fail = back_test(back_df,entrop_req)
+            num_success, num_fail = back_test(back_df,min_prob,kde_factor)
             streamlit_app.render_backtest(num_success,num_fail)
         except Exception as e:
-            streamlit_app.render_error("Can only backtest on tomorrow trades")
+            streamlit_app.render_error(str(e))
     else:
         forecasts = api.pull_forecast(forecast,location)
-        confidence_interval, mean, std, entropy = interp_forecasts(forecasts,cl/100)
-        streamlit_app.render_non_backtest(confidence_interval,forecasts, mean, std, cl, entrop_req, entropy)
+        kde, mean, std, ci, entropy = interp_forecasts(forecasts, cl/100, kde_factor)
+        streamlit_app.render_non_backtest(kde,forecasts, mean, std, ci, entropy, min_prob)
 
     
 if __name__ == '__main__':
