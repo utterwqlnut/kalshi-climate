@@ -20,3 +20,8 @@ pip install -r requirments.txt
 streamlit run main.py
 ```
 <img width="483" height="579" alt="Screenshot 2025-10-06 at 1 50 09 AM" src="https://github.com/user-attachments/assets/1143b3b0-6e9b-4212-a01a-490cc8bc3c35" />
+
+### Important 3rd Party Sites
+- ECMWF: https://confluence.ecmwf.int/display/FUG/Section+9.2.1.1+Causes+of+errors+in+2m+temperature
+- GFS: https://journals.ametsoc.org/view/journals/wefo/39/2/WAF-D-23-0094.1.pdf
+- Live Data: https://wethr.net/
