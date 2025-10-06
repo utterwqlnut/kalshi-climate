@@ -29,17 +29,17 @@ def interp_forecasts(forecasts,cl,kde_factor):
 def main():
     # Get inputs
     api = OpenMeteoAPI()
-    backtest, location, forecast, cl, kde_factor, min_prob = streamlit_app.get_top_of_page()
+    backtest, location, forecast, cl, kde_factor, min_prob, models = streamlit_app.get_top_of_page(api.get_models())
 
     if backtest:
         try:
-            back_df = api.pull_backtest(forecast,location)
+            back_df = api.pull_backtest(forecast,location,models)
             num_success, num_fail = back_test(back_df,min_prob,kde_factor)
             streamlit_app.render_backtest(num_success,num_fail)
         except Exception as e:
             streamlit_app.render_error(str(e))
     else:
-        forecasts = api.pull_forecast(forecast,location)
+        forecasts = api.pull_forecast(forecast,location,models)
         kde, mean, std, ci, entropy = interp_forecasts(forecasts, cl/100, kde_factor)
         streamlit_app.render_non_backtest(kde,forecasts, mean, std, ci, entropy, min_prob)
 

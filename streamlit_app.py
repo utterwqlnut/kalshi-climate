@@ -1,3 +1,4 @@
+from typing import List
 import streamlit as st
 import plotly.figure_factory as ff
 import numpy as np
@@ -5,7 +6,7 @@ import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 
-def get_top_of_page():
+def get_top_of_page(models: List[str]):
     st.markdown("# Kalshi Climate Prediction ☁️")
 
     backtest = st.checkbox('**Backtest**')
@@ -42,14 +43,16 @@ def get_top_of_page():
         100.0,
         50.0
     )
-    
-    return backtest, location, forecast, cl, kde_factor, min_prob/100
+
+    models = st.sidebar.multiselect("Ensemble Models",options=models)
+
+    return backtest, location, forecast, cl, kde_factor, min_prob/100, models
     
 def render_non_backtest(kde, forecasts, mean, std, ci, entropy, min_prob):
     grid = np.linspace(min(forecasts),max(forecasts),int((max(forecasts)-min(forecasts))/0.01)) # dx is 0.01
     pdf = kde(grid)
 
-    fig1 = px.histogram(forecasts,histnorm='probability density',range_x=[min(forecasts),max(forecasts)],opacity=0.5)
+    fig1 = px.histogram(forecasts,histnorm='probability density',range_x=[min(forecasts),max(forecasts)],opacity=0.5,nbins=int((max(forecasts)-min(forecasts))/0.1))
     fig2 = px.line(y=pdf,x=grid)
     
     fig = go.Figure(data = fig1.data+fig2.data)
@@ -61,7 +64,7 @@ def render_non_backtest(kde, forecasts, mean, std, ci, entropy, min_prob):
     big = round(max(forecasts))
     initial_min = smol if smol % 2 == 1 else smol-1
     kr_range = st.selectbox("Enter kalshi range",
-                 [str(i)+"-"+str(i+1) for i in range(initial_min, big, 2)]
+                 [str(i)+"-"+str(i+1) for i in range(initial_min, big, 1)]
                 )
     
     rangeL = float(kr_range.split('-')[0])-0.5

@@ -26,8 +26,10 @@ class OpenMeteoAPI:
         retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
         self.openmeteo = openmeteo_requests.Client(session = retry_session)
 
+        self.models = ["gfs_seamless","gfs025","gfs05","ecmwf_ifs025","ecmwf_aifs025","gem_global"]
+
     @st.cache_data
-    def pull_forecast(_self, forecast, location):
+    def pull_forecast(_self, forecast, location, models):
         coordinates = _self.loco_coord_dict[location]
 
         url = "https://ensemble-api.open-meteo.com/v1/ensemble"
@@ -37,7 +39,7 @@ class OpenMeteoAPI:
             "longitude": coordinates[1],
             "daily": "temperature_2m_max",
             "timezone": "auto",
-            "models": ["icon_seamless", "icon_global", "gfs025", "gfs_seamless", "ecmwf_aifs025", "ecmwf_ifs025", "gem_global","gfs05"],
+            "models": models,
             "forecast_days": 3,
         }
 
@@ -69,7 +71,7 @@ class OpenMeteoAPI:
             return data[:,1]
         
     @st.cache_data
-    def pull_backtest(_self, forecast, location):
+    def pull_backtest(_self, forecast, location, models):
         if forecast != "Tomorrow":
             raise Exception("Only Backtest on tomorrow trades")
         
@@ -83,7 +85,7 @@ class OpenMeteoAPI:
             "longitude": coordinates[1],
             "daily": "temperature_2m_max",
             "timezone": "auto",
-            "models": ["icon_seamless", "icon_global", "gfs025", "gfs_seamless", "ecmwf_aifs025", "ecmwf_ifs025", "gem_global","gfs05"],
+            "models": models,
             "forecast_days": 7,
             "past_days": 92,
         }
@@ -143,3 +145,6 @@ class OpenMeteoAPI:
         daily_dataframe_forecasts["temperature_2m_max"] = daily_temperature_2m_max        
 
         return daily_dataframe_forecasts
+
+    def get_models(self):
+        return self.models
