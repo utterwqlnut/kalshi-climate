@@ -19,4 +19,4 @@ To use run:
 pip install -r requirments.txt
 streamlit run main.py
 ```
-<img width="682" height="783" alt="Screenshot 2025-10-04 at 7 06 45 PM" src="https://github.com/user-attachments/assets/d4feefaa-3502-4f6c-b9bd-4d398b915e50" />
+<img width="483" height="579" alt="Screenshot 2025-10-06 at 1 50 09 AM" src="https://github.com/user-attachments/assets/1143b3b0-6e9b-4212-a01a-490cc8bc3c35" />
