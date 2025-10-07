@@ -11,10 +11,10 @@ def get_top_of_page(models: List[str]):
 
     backtest = st.checkbox('**Backtest**')
 
-    col1,col2,col3,col4,col5 = st.columns(5)
+    col1,col2,col3,col4,col5,col6 = st.columns(6)
 
     location = col1.selectbox(
-        'What location?',
+        'Location',
         ['NYC', 'Miami', 'Chicago', 'Denver', 'Austin', 'Los Angeles', 'Philadelphia']
     )
 
@@ -24,29 +24,50 @@ def get_top_of_page(models: List[str]):
     )
 
     cl = col3.slider(
-        'Confidence Level',
+        'Alpha',
         0,
         100,
         95,
     )
 
     kde_factor = col4.slider(
-        'KDE Scott Bandwidth Factor',
+        'KDE Factor',
         0.0,
         2.0,
         1.0,
     )
 
     min_prob = col5.slider(
-        'Minimum probability',
+        'Min prob',
         0.0,
         100.0,
         50.0
     )
 
+    bias = col6.slider(
+        "Bias",
+        -2.0,
+        2.0,
+        0.0,
+    )
+
+    multiplier = col6.slider(
+        "Multiplier",
+        0.95,
+        1.0,
+        1.05,
+    )
+
+    history = col6.slider(
+        "History",
+        0,
+        92,
+        7,
+    )
+
     models = st.sidebar.multiselect("Ensemble Models",options=models)
 
-    return backtest, location, forecast, cl, kde_factor, min_prob/100, models
+    return backtest, location, forecast, cl, kde_factor, min_prob/100, models, bias, multiplier, history
     
 def render_non_backtest(kde, forecasts, mean, std, ci, entropy, min_prob):
     grid = np.linspace(min(forecasts),max(forecasts),int((max(forecasts)-min(forecasts))/0.01)) # dx is 0.01

@@ -2,7 +2,7 @@ import openmeteo_requests
 
 from openmeteo_sdk.Variable import Variable
 from openmeteo_sdk.Aggregation import Aggregation
-
+import os
 import pandas as pd
 import requests_cache
 from retry_requests import retry
@@ -10,16 +10,18 @@ import numpy as np
 import random
 import streamlit as st
 
+import requests
+
 class OpenMeteoAPI:
     def __init__(self):
         self.loco_coord_dict = {
-            "NYC": ('40.77898', '-73.96925'),
-            "Miami": ('25.78805', '-80.31694'),
-            "Chicago": ('41.73727', '-87.77734'),
-            "Denver": ('39.84657', '-104.65623'),
-            "Austin": ('30.18311', '-97.67989'),
-            "Los Angeles": ('33.93816', '-118.3866'),
-            "Philadelphia": ('39.87326', '-75.22681')
+            "NYC": ('40.77898', '-73.96925','GHCND:USW00094728'),
+            "Miami": ('25.78805', '-80.31694','GHCND:USW00012839'),
+            "Chicago": ('41.73727', '-87.77734','GHCND:USW00014819'),
+            "Denver": ('39.84657', '-104.65623','GHCND:USW00093067'),
+            "Austin": ('30.18311', '-97.67989', 'GHCND:USW00013904'),
+            "Los Angeles": ('33.93816', '-118.3866', 'GHCND:USW00023174'),
+            "Philadelphia": ('39.87326', '-75.22681', 'GHCND:USW00013771')
         }
 
         cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
@@ -27,6 +29,9 @@ class OpenMeteoAPI:
         self.openmeteo = openmeteo_requests.Client(session = retry_session)
 
         self.models = ["gfs_seamless","gfs025","gfs05","ecmwf_ifs025","ecmwf_aifs025","gem_global"]
+
+        self.convert = np.vectorize(lambda celsius: (celsius * 9/5) + 32)
+
 
     @st.cache_data
     def pull_forecast(_self, forecast, location, models):
@@ -59,10 +64,9 @@ class OpenMeteoAPI:
 
         data = np.zeros((len(daily_variables),3))
         
-        convert = np.vectorize(lambda celsius: (celsius * 9/5) + 32)
 
         for i, variable in enumerate(daily_max_temperature_2m):
-            data[i] = convert(variable.ValuesAsNumpy())
+            data[i] = _self.convert(variable.ValuesAsNumpy())
 
           
         if forecast == "Today":
@@ -71,7 +75,7 @@ class OpenMeteoAPI:
             return data[:,1]
         
     @st.cache_data
-    def pull_backtest(_self, forecast, location, models):
+    def pull_backtest(_self, forecast, location, models, history):
         if forecast != "Tomorrow":
             raise Exception("Only Backtest on tomorrow trades")
         
@@ -87,7 +91,7 @@ class OpenMeteoAPI:
             "timezone": "auto",
             "models": models,
             "forecast_days": 7,
-            "past_days": 92,
+            "past_days": history,
         }
 
         responses = _self.openmeteo.weather_api(url, params=params)
@@ -123,27 +127,31 @@ class OpenMeteoAPI:
         min_date = min(daily_dataframe_forecasts["date"])
         max_date = max(daily_dataframe_forecasts["date"])
 
+        # NOAA API token
+        token = os.getenv("NOAA")
+
+        # NOAA API endpoint and query parameters
+        url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
+
         params = {
-            "latitude": coordinates[0],
-            "longitude": coordinates[1],
-            "start_date": str(min_date).split(' ')[0],
-            "end_date": str(max_date).split(' ')[0],
-            "daily": "temperature_2m_max",
-            "timezone": "auto",
+            "datasetid": "GHCND",
+            "datatypeid": "TMAX",
+            "stationid": _self.loco_coord_dict[location][2],  # Central Park, NY
+            "startdate": str(min_date).split(' ')[0],
+            "enddate": str(max_date).split(' ')[0],
+            "units": "standard",  # Fahrenheit
+            "limit": 1000
         }
-        responses = _self.openmeteo.weather_api(url, params=params)
 
-        # Process first location. Add a for-loop for multiple locations or weather models
-
-        response = responses[0]
-
-        # Process daily data. The order of variables needs to be the same as requested.
-
-        daily = response.Daily()
-        daily_temperature_2m_max = daily.Variables(0).ValuesAsNumpy()
-
-        daily_dataframe_forecasts["temperature_2m_max"] = daily_temperature_2m_max        
-
+        headers = {"token": token}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()  # raise an error if request failed
+        print(response.json())
+        data = [a['value'] for a in response.json()["results"] ]
+        
+        daily_dataframe_forecasts = daily_dataframe_forecasts.iloc[:len(data)]
+        daily_dataframe_forecasts["temperature_2m_max"] = data    
+        daily_dataframe_forecasts.iloc[:,1:-1] = _self.convert(daily_dataframe_forecasts.iloc[:,1:-1])
         return daily_dataframe_forecasts
 
     def get_models(self):

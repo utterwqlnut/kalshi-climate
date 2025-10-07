@@ -3,7 +3,7 @@ import numpy as np
 from scipy import stats
 
 
-def back_test(df: pd.DataFrame, min_prob, kde_factor):
+def back_test(df: pd.DataFrame, min_prob, kde_factor,bias,multiplier):
     num_successes = 0
     num_fails = 0
 
@@ -11,10 +11,13 @@ def back_test(df: pd.DataFrame, min_prob, kde_factor):
         
         truth = round(df.iloc[i,-1])
         ensemble = pd.to_numeric(df.iloc[i,1:-1])
-
+        ensemble *= multiplier
+        ensemble += bias
         kde = stats.gaussian_kde(ensemble.to_numpy(),bw_method=kde_factor)
+        
         smol = round(min(ensemble))
         big = round(max(ensemble))
+
         initial_min = smol if smol % 2 == 1 else smol-1
         kr_range = [(i,i+1) for i in range(initial_min, big, 2)]
         
